@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="OmniForge — Autonomous Multimodal Self-Healing Developer Engine Dashboard">
+<title>OmniForge — AI Developer Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   RESET & TOKENS
+   ================================================================ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* Palette */
+  --bg-deep: #0b0e17;
+  --bg-mid: #0f1420;
+  --bg-card: rgba(18, 21, 30, 0.65);
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --border-glass: rgba(255, 255, 255, 0.12);
+  --text-primary: #e8eaf0;
+  --text-muted: rgba(255, 255, 255, 0.45);
+  --text-dim: rgba(255, 255, 255, 0.25);
+  --cyan: #00e5ff;
+  --green: #00ff88;
+  --red: #ff4466;
+  --amber: #ffbd2e;
+  --violet: #a855f7;
+  --emerald: #34d399;
+  /* Glass */
+  --glass-bg: rgba(16, 19, 28, 0.60);
+  --glass-blur: blur(24px) saturate(150%);
+  --glass-border: 1px solid var(--border-glass);
+  --glass-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.3),
+    0 16px 40px -10px rgba(0, 0, 0, 0.55);
+  /* Noise */
+  --noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  /* Sizing */
+  --sidebar-w: 280px;
+  --header-h: 90px;
+  --radius: 16px;
+  --radius-lg: 24px;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(0, 229, 255, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(168, 85, 247, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, #131824, #0b0e17);
+}
+
+/* ================================================================
+   UTILITY: GLASS PANEL
+   ================================================================ */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: var(--radius);
+  position: relative;
+}
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: var(--noise);
+  background-size: 180px 180px;
+  pointer-events: none;
+  opacity: 0.6;
+  mix-blend-mode: overlay;
+  z-index: 0;
+}
+.glass > * { position: relative; z-index: 1; }
+
+/* ================================================================
+   GRID LAYOUT
+   ================================================================ */
+.app-grid {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "header header"
+    "sidebar main";
+  height: 100vh;
+  gap: 0;
+  padding: 16px;
+}
+
+/* ================================================================
+   HEADER — TOP COMMAND BAR
+   ================================================================ */
+.header {
+  grid-area: header;
+  border-radius: var(--radius-lg);
+  padding: 16px 22px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 68px;
+}
+
+/* Traffic Lights */
+.traffic-lights {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.dot {
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  box-shadow:
+    inset 0 1.5px 2px rgba(255,255,255,0.4),
+    inset 0 -1px 1px rgba(0,0,0,0.3),
+    0 0 8px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: filter 0.2s, transform 0.15s;
+}
+.dot:hover { filter: brightness(1.3); transform: scale(1.12); }
+.dot-r { background: #FF5F56; }
+.dot-y { background: #FFBD2E; }
+.dot-g { background: #27C93F; }
+
+/* URL Tag */
+.header-tag {
+  flex-shrink: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+/* Prompt Input */
+.header-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.30);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 12px 18px;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  min-width: 0;
+}
+.header-input::placeholder { color: rgba(255,255,255,0.28); }
+.header-input:focus {
+  border-color: rgba(0, 220, 255, 0.25);
+  box-shadow: 0 0 20px rgba(0, 220, 255, 0.06);
+}
+
+/* Dispatch Button */
+.btn-dispatch {
+  flex-shrink: 0;
+  padding: 12px 28px;
+  border-radius: 14px;
+  background: rgba(0, 200, 240, 0.08);
+  border: 1px solid rgba(0, 220, 255, 0.25);
+  color: var(--cyan);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  animation: pulse-btn 3.5s ease-in-out infinite;
+}
+@keyframes pulse-btn {
+  0%, 100% { box-shadow: 0 0 10px rgba(0,220,255,0.06); }
+  50% { box-shadow: 0 0 28px rgba(0,220,255,0.18), 0 0 56px rgba(0,220,255,0.04); }
+}
+.btn-dispatch:hover {
+  background: rgba(0,200,240,0.16);
+  box-shadow: 0 0 32px rgba(0,220,255,0.16), inset 0 1px 1px rgba(255,255,255,0.12);
+  transform: translateY(-1px);
+}
+.btn-dispatch::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,220,255,0.10), transparent);
+  transition: left 0.6s ease;
+}
+.btn-dispatch:hover::after { left: 100%; }
+.btn-dispatch:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  animation: none;
+}
+
+/* ================================================================
+   SIDEBAR — AGENT PIPELINE STEPPER
+   ================================================================ */
+.sidebar {
+  grid-area: sidebar;
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  margin-right: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 28px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Timeline */
+.timeline { display: flex; flex-direction: column; gap: 0; }
+
+.step {
+  display: flex;
+  gap: 16px;
+  position: relative;
+  padding-bottom: 32px;
+}
+.step:last-child { padding-bottom: 0; }
+
+/* Vertical connector line */
+.step::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 36px;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255,255,255,0.05);
+  transition: background 0.6s;
+}
+.step:last-child::before { display: none; }
+.step.completed::before { background: var(--green); opacity: 0.3; }
+.step.active::before { background: var(--cyan); opacity: 0.25; }
+
+/* Node dot */
+.step-node {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(30, 33, 45, 0.8);
+  border: 2px solid rgba(255,255,255,0.08);
+  color: var(--text-dim);
+  transition: all 0.5s ease;
+}
+.step.active .step-node {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.25);
+  background: rgba(0, 229, 255, 0.06);
+}
+.step.completed .step-node {
+  border-color: var(--green);
+  color: var(--green);
+  box-shadow: 0 0 14px rgba(0, 255, 136, 0.2);
+  background: rgba(0, 255, 136, 0.06);
+}
+.step.error .step-node {
+  border-color: var(--red);
+  color: var(--red);
+  box-shadow: 0 0 18px rgba(255, 68, 102, 0.25);
+  background: rgba(255, 68, 102, 0.06);
+  animation: error-pulse 1s ease-in-out infinite;
+}
+@keyframes error-pulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(255,68,102,0.2); }
+  50% { box-shadow: 0 0 28px rgba(255,68,102,0.4); }
+}
+
+/* Step info */
+.step-info { flex: 1; padding-top: 5px; }
+.step-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  transition: color 0.4s;
+}
+.step.active .step-label { color: var(--cyan); }
+.step.completed .step-label { color: rgba(0,255,136,0.6); }
+.step.error .step-label { color: var(--red); }
+
+.step-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  transition: color 0.4s;
+}
+.step.pending .step-name { color: rgba(255,255,255,0.35); }
+
+.step-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.step-status {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: all 0.4s ease;
+}
+.step.active .step-status,
+.step.completed .step-status,
+.step.error .step-status {
+  opacity: 1;
+  transform: translateY(0);
+}
+.step.pending .step-status { background: transparent; color: transparent; }
+.step.active .step-status { background: rgba(0,229,255,0.08); color: var(--cyan); }
+.step.completed .step-status { background: rgba(0,255,136,0.08); color: var(--green); }
+.step.error .step-status { background: rgba(255,68,102,0.08); color: var(--red); }
+
+/* Sidebar footer stats */
+.sidebar-stats {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.stat-box {
+  text-align: center;
+  padding: 12px 8px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-subtle);
+}
+.stat-val {
+  font-family: 'Outfit', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--cyan), var(--green));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.stat-label {
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ================================================================
+   MAIN CONTENT AREA
+   ================================================================ */
+.main {
+  grid-area: main;
+  display: grid;
+  grid-template-rows: minmax(200px, 0.42fr) 1fr;
+  gap: 16px;
+  overflow: hidden;
+}
+
+/* ----------------------------------------------------------------
+   FILE TREE PANEL
+   ---------------------------------------------------------------- */
+.file-panel {
+  border-radius: var(--radius-lg);
+  padding: 20px 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.panel-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.panel-badge {
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  background: rgba(0,229,255,0.06);
+  color: var(--cyan);
+  border: 1px solid rgba(0,229,255,0.12);
+}
+
+/* File tree */
+.file-tree {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--text-muted);
+  flex: 1;
+  overflow-y: auto;
+}
+.file-tree .dir {
+  color: rgba(255,255,255,0.55);
+  cursor: default;
+}
+.file-tree .file {
+  color: rgba(255,255,255,0.40);
+  padding-left: 0;
+}
+.file-tree .file-new {
+  color: var(--green);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.file-tree .file-new.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+.tree-icon { margin-right: 6px; font-style: normal; opacity: 0.5; }
+
+/* ----------------------------------------------------------------
+   TERMINAL PANEL
+   ---------------------------------------------------------------- */
+.terminal-panel {
+  border-radius: var(--radius-lg);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.term-chrome {
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.term-dot-live {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: blink-live 1.5s ease-in-out infinite;
+}
+@keyframes blink-live { 0%,100%{ opacity:1; } 50%{ opacity:0.25; } }
+.term-chrome-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* CRT scanline overlay */
+.terminal-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.04) 3px,
+    rgba(0, 0, 0, 0.04) 6px
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.terminal-body {
+  flex: 1;
+  padding: 14px 20px 20px;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--green);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,255,136,0.12) transparent;
+}
+.t { white-space: pre-wrap; word-break: break-all; }
+.t.err { color: var(--red); }
+.t.warn { color: var(--amber); }
+.t.ok { color: var(--green); }
+.t.info { color: #66bbff; }
+.t.patch { color: var(--violet); }
+.t.dim { color: var(--text-dim); }
+.t.system { color: var(--cyan); }
+.cursor { animation: cursor-blink 0.55s step-end infinite; }
+@keyframes cursor-blink { 0%,100%{ opacity:1; } 50%{ opacity:0; } }
+
+/* ================================================================
+   VISUAL PR MODAL
+   ================================================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(4, 6, 14, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: none;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  overflow-y: auto;
+  padding: 40px 20px;
+}
+.modal-overlay.visible { display: flex; opacity: 1; align-items: center; justify-content: center; }
+
+.modal-card {
+  width: min(960px, 94vw);
+  border-radius: 28px;
+  padding: 36px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-badge {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 10px;
+  background: rgba(0,255,136,0.08);
+  border: 1px solid rgba(0,255,136,0.2);
+  color: var(--green);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.modal-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--cyan), var(--green));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 6px;
+}
+.modal-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 30px;
+}
+
+/* Diff columns */
+.diff-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+.diff-col {
+  border-radius: var(--radius);
+  background: rgba(0,0,0,0.30);
+  border: 1px solid var(--border-subtle);
+  padding: 18px;
+  overflow: hidden;
+}
+.diff-head {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.diff-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  line-height: 1.75;
+  white-space: pre;
+  overflow-x: auto;
+}
+.diff-code .add { color: var(--green); }
+.diff-code .del { color: var(--red); text-decoration: line-through; opacity: 0.6; }
+.diff-code .ctx { color: rgba(255,255,255,0.30); }
+
+/* Before/After Slider */
+.ba-section { margin-bottom: 28px; }
+.ba-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+}
+.ba-container {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  user-select: none;
+}
+.ba-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  padding: 28px;
+  text-align: center;
+  line-height: 1.8;
+}
+.ba-before-layer {
+  background:
+    repeating-linear-gradient(45deg, rgba(255,40,40,0.03), rgba(255,40,40,0.03) 10px, transparent 10px, transparent 20px),
+    linear-gradient(135deg, rgba(40,10,10,0.6), rgba(60,15,15,0.4));
+  color: var(--red);
+  clip-path: inset(0 50% 0 0);
+}
+.ba-after-layer {
+  background:
+    linear-gradient(135deg, rgba(5,30,20,0.6), rgba(10,40,25,0.4));
+  color: var(--green);
+  clip-path: inset(0 0 0 50%);
+}
+.ba-handle {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 3px;
+  background: rgba(255,255,255,0.45);
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+}
+.ba-handle::before {
+  content: '◀▶';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(20, 22, 30, 0.9);
+  border: 2px solid rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 2px;
+}
+.ba-tag {
+  position: absolute;
+  top: 12px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+  z-index: 2;
+}
+.ba-tag-b { left: 12px; background: rgba(255,68,102,0.12); color: var(--red); }
+.ba-tag-a { right: 12px; background: rgba(0,255,136,0.08); color: var(--green); }
+
+.ba-range {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: ew-resize;
+  z-index: 4;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Modal actions */
+.modal-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+.modal-btn {
+  padding: 14px 36px;
+  border-radius: var(--radius);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+.btn-merge {
+  background: rgba(0,255,136,0.08);
+  border: 1px solid rgba(0,255,136,0.25);
+  color: var(--green);
+}
+.btn-merge:hover {
+  background: rgba(0,255,136,0.18);
+  box-shadow: 0 0 30px rgba(0,255,136,0.12);
+  transform: translateY(-2px);
+}
+.btn-reject {
+  background: rgba(255,68,102,0.06);
+  border: 1px solid rgba(255,68,102,0.18);
+  color: var(--red);
+}
+.btn-reject:hover {
+  background: rgba(255,68,102,0.14);
+  box-shadow: 0 0 24px rgba(255,68,102,0.10);
+  transform: translateY(-2px);
+}
+
+/* ================================================================
+   RESPONSIVE
+   ================================================================ */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 0px; }
+  .app-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "main";
+  }
+  .sidebar { display: none; }
+  .header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .header-tag { display: none; }
+  .diff-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-grid">
+  <!-- ============== HEADER — COMMAND BAR ============== -->
+  <div class="header glass" id="header">
+    <div class="traffic-lights">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+    </div>
+    <div class="header-tag">omniforge.dev/engine</div>
+    <input type="text" class="header-input" id="prompt-input"
+      placeholder="Describe your frontend app (e.g., 'Interactive Kanban board with dark mode')..."
+      autocomplete="off" spellcheck="false">
+    <button class="btn-dispatch" id="btn-dispatch">⚡ Ignite &amp; Dispatch</button>
+  </div>
+
+  <!-- ============== SIDEBAR — AGENT PIPELINE ============== -->
+  <div class="sidebar glass" id="sidebar">
+    <div class="sidebar-title">▸ Agent Pipeline</div>
+    <div class="timeline" id="timeline">
+      <!-- Step 1 -->
+      <div class="step pending" id="step-0">
+        <div class="step-node">1</div>
+        <div class="step-info">
+          <div class="step-label">Dev 2</div>
+          <div class="step-name">The Architect</div>
+          <div class="step-desc">Scaffolding & Code Generation</div>
+          <div class="step-status" id="status-0">Pending</div>
+        </div>
+      </div>
+      <!-- Step 2 -->
+      <div class="step pending" id="step-1">
+        <div class="step-node">2</div>
+        <div class="step-info">
+          <div class="step-label">Dev 3</div>
+          <div class="step-name">Sandbox</div>
+          <div class="step-desc">Execution & Runtime Compilation</div>
+          <div class="step-status" id="status-1">Pending</div>
+        </div>
+      </div>
+      <!-- Step 3 -->
+      <div class="step pending" id="step-2">
+        <div class="step-node">3</div>
+        <div class="step-info">
+          <div class="step-label">Dev 3</div>
+          <div class="step-name">Vision Sentry</div>
+          <div class="step-desc">Visual QA & Layout Checks</div>
+          <div class="step-status" id="status-2">Pending</div>
+        </div>
+      </div>
+      <!-- Step 4 -->
+      <div class="step pending" id="step-3">
+        <div class="step-node">4</div>
+        <div class="step-info">
+          <div class="step-label">Dev 4</div>
+          <div class="step-name">Convergence</div>
+          <div class="step-desc">Testing, Diffing & Visual PR</div>
+          <div class="step-status" id="status-3">Pending</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-stats">
+      <div class="stat-box">
+        <div class="stat-val" id="stat-files">0</div>
+        <div class="stat-label">Files</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-patches">0</div>
+        <div class="stat-label">Patches</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== MAIN CONTENT ============== -->
+  <div class="main">
+    <!-- FILE TREE -->
+    <div class="file-panel glass" id="file-panel">
+      <div class="panel-head">
+        <div class="panel-title">▸ Project Explorer</div>
+        <div class="panel-badge" id="file-count">0 files</div>
+      </div>
+      <div class="file-tree" id="file-tree">
+        <div class="dim" style="font-size:11px; color:var(--text-dim); padding: 20px 0; text-align:center;">
+          Awaiting scaffold generation...
+        </div>
+      </div>
+    </div>
+
+    <!-- TERMINAL -->
+    <div class="terminal-panel glass" id="terminal-panel">
+      <div class="term-chrome">
+        <div class="term-dot-live"></div>
+        <div class="term-chrome-title">Game Arena Terminal</div>
+      </div>
+      <div class="terminal-body" id="terminal">
+        <div class="t dim">OmniForge Engine v4.2.0 — Ready</div>
+        <div class="t dim">Type a prompt and hit IGNITE to begin.<span class="cursor">█</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== VISUAL PR MODAL ============== -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-card glass">
+    <div class="modal-badge">✓ All checks passed • 0 regressions</div>
+    <div class="modal-title">Visual Pull Request — Ready for Review</div>
+    <div class="modal-sub">4 agents converged • 1 self-heal applied • 32/32 tests passing</div>
+
+    <div class="diff-grid">
+      <div class="diff-col">
+        <div class="diff-head">— Original (Before Self-Heal)</div>
+        <div class="diff-code">
+<span class="ctx">  // Board.tsx</span>
+<span class="ctx">  const Board = ({ columns }) =&gt; {</span>
+<span class="ctx">    return (</span>
+<span class="del">      &lt;div className="board" style={{ overflow: 'hidden' }}&gt;</span>
+<span class="ctx">        {items.map(item =&gt;</span>
+<span class="ctx">          &lt;Card key={item.id} {...item} /&gt;</span>
+<span class="ctx">        )}</span>
+<span class="ctx">      &lt;/div&gt;</span>
+<span class="ctx">    )</span>
+<span class="ctx">  }</span>
+        </div>
+      </div>
+      <div class="diff-col">
+        <div class="diff-head">+ Patched (After Self-Heal)</div>
+        <div class="diff-code">
+<span class="ctx">  // Board.tsx</span>
+<span class="ctx">  const Board = ({ columns }) =&gt; {</span>
+<span class="ctx">    const items = columns.flatMap(c =&gt; c.items);</span>
+<span class="add">      &lt;div className="board" style={{ overflowX: 'auto' }}&gt;</span>
+<span class="ctx">        {items.map(item =&gt;</span>
+<span class="ctx">          &lt;Card key={item.id} {...item} /&gt;</span>
+<span class="ctx">        )}</span>
+<span class="ctx">      &lt;/div&gt;</span>
+<span class="ctx">    )</span>
+<span class="ctx">  }</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ba-section">
+      <div class="ba-title">Before / After DOM Comparison</div>
+      <div class="ba-container" id="ba-container">
+        <div class="ba-layer ba-before-layer" id="ba-before">
+          <div>
+            ⚠️ <strong>Broken Render</strong><br><br>
+            <span style="opacity:0.65;font-size:12px">
+              • Horizontal overflow hidden — cards clipped<br>
+              • TypeError: items.map is not a function<br>
+              • Last 2 columns invisible<br>
+            </span>
+          </div>
+        </div>
+        <div class="ba-layer ba-after-layer" id="ba-after">
+          <div>
+            ✅ <strong>Flawless Render</strong><br><br>
+            <span style="opacity:0.65;font-size:12px">
+              • Scrollable board with all columns visible<br>
+              • Data safely derived from columns prop<br>
+              • Drag-drop working across all lanes<br>
+            </span>
+          </div>
+        </div>
+        <div class="ba-handle" id="ba-handle"></div>
+        <span class="ba-tag ba-tag-b">Before</span>
+        <span class="ba-tag ba-tag-a">After</span>
+        <input type="range" class="ba-range" id="ba-range" min="0" max="100" value="50">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-btn btn-merge" id="btn-merge">✓ Approve &amp; Merge</button>
+      <button class="modal-btn btn-reject" id="btn-reject">✕ Reject</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT — SIMULATION ENGINE
+     ============================================================ -->
+<script>
+(function() {
+  'use strict';
+
+  /* ====================== DOM REFS ====================== */
+  const $prompt   = document.getElementById('prompt-input');
+  const $dispatch = document.getElementById('btn-dispatch');
+  const $terminal = document.getElementById('terminal');
+  const $fileTree = document.getElementById('file-tree');
+  const $fileCount = document.getElementById('file-count');
+  const $modal    = document.getElementById('modal');
+  const $baRange  = document.getElementById('ba-range');
+  const $baBefore = document.getElementById('ba-before');
+  const $baAfter  = document.getElementById('ba-after');
+  const $baHandle = document.getElementById('ba-handle');
+  const $btnMerge = document.getElementById('btn-merge');
+  const $btnReject = document.getElementById('btn-reject');
+  const $statFiles = document.getElementById('stat-files');
+  const $statPatches = document.getElementById('stat-patches');
+
+  const steps = [0,1,2,3].map(i => ({
+    el:     document.getElementById(`step-${i}`),
+    status: document.getElementById(`status-${i}`),
+  }));
+
+  /* ====================== STATE ====================== */
+  let running = false;
+  let userPrompt = '';
+
+  /* ====================== HELPERS ====================== */
+  function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function setStep(idx, state, statusText) {
+    const s = steps[idx];
+    s.el.className = 'step ' + state;
+    s.status.textContent = statusText || state;
+  }
+
+  /* ---- Typewriter terminal ---- */
+  async function termType(text, cls = '', charDelay = 12) {
+    const line = document.createElement('div');
+    line.className = 't ' + cls;
+    $terminal.appendChild(line);
+    for (let i = 0; i <= text.length; i++) {
+      line.textContent = text.substring(0, i) + (i < text.length ? '█' : '');
+      $terminal.scrollTop = $terminal.scrollHeight;
+      await wait(charDelay);
+    }
+    line.textContent = text;
+    return line;
+  }
+
+  async function termLine(text, cls = '', delayAfter = 120) {
+    await termType(text, cls);
+    await wait(delayAfter);
+  }
+
+  function termClear() {
+    $terminal.innerHTML = '';
+  }
+
+  /* ---- File tree builder ---- */
+  const fileEntries = [];
+
+  function addFileEntry(depth, name, isDir = false) {
+    const indent = '  '.repeat(depth);
+    const prefix = isDir ? '📁 ' : (name.endsWith('/') ? '📁 ' : '📄 ');
+    const entry = { depth, name, isDir, indent, prefix };
+    fileEntries.push(entry);
+    renderFileTree();
+    return entry;
+  }
+
+  function renderFileTree() {
+    $fileTree.innerHTML = '';
+    let fileC = 0;
+    fileEntries.forEach((e, i) => {
+      const div = document.createElement('div');
+      div.className = e.isDir ? 'dir file-new' : 'file file-new';
+      div.innerHTML = `<i class="tree-icon">${e.isDir ? '📁' : '📄'}</i>${e.indent}${e.name}`;
+      $fileTree.appendChild(div);
+      if (!e.isDir) fileC++;
+      // Stagger the reveal animation
+      setTimeout(() => div.classList.add('visible'), i * 40);
+    });
+    $fileCount.textContent = fileC + ' files';
+    $statFiles.textContent = fileC;
+  }
+
+  /* ====================== BEFORE/AFTER SLIDER ====================== */
+  $baRange.addEventListener('input', () => {
+    const v = $baRange.value;
+    $baBefore.style.clipPath = `inset(0 ${100 - v}% 0 0)`;
+    $baAfter.style.clipPath = `inset(0 0 0 ${v}%)`;
+    $baHandle.style.left = v + '%';
+  });
+
+  /* ====================== MODAL ====================== */
+  function showModal() {
+    $modal.classList.add('visible');
+    requestAnimationFrame(() => { $modal.style.opacity = '1'; });
+  }
+
+  function hideModal() {
+    $modal.style.opacity = '0';
+    setTimeout(() => { $modal.classList.remove('visible'); }, 700);
+  }
+
+  function resetAll() {
+    running = false;
+    $dispatch.disabled = false;
+    $prompt.value = '';
+    $prompt.disabled = false;
+    termClear();
+    termType('OmniForge Engine v4.2.0 — Ready', 'dim', 0);
+    termType('Type a prompt and hit IGNITE to begin.', 'dim', 0);
+    fileEntries.length = 0;
+    $fileTree.innerHTML = '<div class="dim" style="font-size:11px;color:var(--text-dim);padding:20px 0;text-align:center;">Awaiting scaffold generation...</div>';
+    $fileCount.textContent = '0 files';
+    $statFiles.textContent = '0';
+    $statPatches.textContent = '0';
+    steps.forEach((s, i) => setStep(i, 'pending', 'Pending'));
+    hideModal();
+  }
+
+  $btnMerge.addEventListener('click', () => {
+    resetAll();
+  });
+  $btnReject.addEventListener('click', () => {
+    resetAll();
+  });
+
+  /* ====================== INPUT ISOLATION ====================== */
+  $prompt.addEventListener('keydown', e => e.stopPropagation());
+  $prompt.addEventListener('keyup', e => e.stopPropagation());
+  $prompt.addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      $dispatch.click();
+    }
+  });
+
+  /* ====================== MAIN SIMULATION ====================== */
+  $dispatch.addEventListener('click', async () => {
+    if (running) return;
+    running = true;
+    userPrompt = $prompt.value.trim() || 'Interactive Kanban board with drag-drop and dark mode';
+    $dispatch.disabled = true;
+    $prompt.disabled = true;
+
+    termClear();
+
+    /* ========== IGNITION ========== */
+    await termLine('╔══════════════════════════════════════════╗', 'system', 40);
+    await termLine('║     OMNIFORGE ENGINE — IGNITION v4.2     ║', 'system', 40);
+    await termLine('╚══════════════════════════════════════════╝', 'system', 200);
+    await termLine(`> Cargo received: "${userPrompt.substring(0, 60)}"`, '', 300);
+    await termLine('> Dispatching to Agent Pipeline...', 'info', 500);
+    await termLine('', '', 100);
+
+    /* ========== STEP 1: THE ARCHITECT ========== */
+    setStep(0, 'active', 'Processing...');
+
+    await termLine('━━━ STAGE 1: THE ARCHITECT ━━━', 'system', 300);
+    await termLine('> Ingesting prompt payload...', '', 400);
+    await termLine('> Generating Vite + React + TypeScript architecture...', 'info', 600);
+
+    // Build file tree
+    addFileEntry(0, 'omniforge-app/', true);
+    await wait(200);
+    addFileEntry(1, 'src/', true);
+    await wait(100);
+    addFileEntry(2, 'components/', true);
+    await wait(100);
+
+    await termLine('> Scaffolding component modules...', '', 300);
+    addFileEntry(3, 'App.tsx'); await wait(80);
+    addFileEntry(3, 'Header.tsx'); await wait(80);
+    addFileEntry(3, 'Board.tsx'); await wait(80);
+    addFileEntry(3, 'Column.tsx'); await wait(80);
+    addFileEntry(3, 'Card.tsx'); await wait(80);
+    addFileEntry(2, 'hooks/', true); await wait(80);
+    addFileEntry(3, 'useDragDrop.ts'); await wait(80);
+    addFileEntry(2, 'store/', true); await wait(80);
+    addFileEntry(3, 'boardSlice.ts'); await wait(80);
+    addFileEntry(2, 'main.tsx'); await wait(80);
+    addFileEntry(1, 'vite.config.ts'); await wait(80);
+    addFileEntry(1, 'tailwind.config.js'); await wait(80);
+    addFileEntry(1, 'tsconfig.json'); await wait(80);
+    addFileEntry(1, 'package.json'); await wait(80);
+
+    await termLine('> Resolved deps: react@19.1, vite@6.2, typescript@5.6', 'info', 350);
+    await termLine('> Initial TSX scaffolding written to 9 files.', '', 200);
+    await termLine('✓ Architect phase complete.', 'ok', 400);
+
+    setStep(0, 'completed', 'Done');
+    await wait(500);
+
+    /* ========== STEP 2: SANDBOX (with CRASH & HEAL) ========== */
+    setStep(1, 'active', 'Processing...');
+
+    await termLine('', '', 50);
+    await termLine('━━━ STAGE 2: SANDBOX & RUNTIME ━━━', 'system', 300);
+    await termLine('> Booting isolated Node container...', '', 400);
+    await termLine('> docker run -d --name omni-sandbox node:22-alpine', 'dim', 500);
+    await termLine('  Container a7f3c2d1... started ✓', 'ok', 250);
+    await termLine('> npm install --prefer-offline', '', 300);
+    await termLine('  added 1,247 packages in 4.1s', 'dim', 700);
+    await termLine('> npx vite --host 0.0.0.0 --port 5173', '', 350);
+    await termLine('  VITE v6.2.0 ready in 380ms', 'ok', 200);
+    await termLine('  ➜ Local: http://localhost:5173/', 'info', 400);
+
+    // SIMULATE ERROR
+    await wait(600);
+    setStep(1, 'error', 'Error!');
+    await termLine('', '', 50);
+    await termLine('████████████████████████████████████████████', 'err', 80);
+    await termLine('[ERROR] Uncaught TypeError: items.map is not a function', 'err', 100);
+    await termLine('  at Board.tsx:14:22', 'err', 100);
+    await termLine('  at renderWithHooks (react-dom.js:1234:18)', 'err', 80);
+    await termLine('████████████████████████████████████████████', 'err', 500);
+
+    await wait(400);
+
+    // SELF-HEAL
+    await termLine('> ⚡ Architect auto-heal triggered...', 'patch', 350);
+    await termLine('> Analyzing stack trace → Board.tsx L14', 'patch', 300);
+    await termLine('> patch_file("Board.tsx", {', 'patch', 150);
+    await termLine('    search: "items.map(item =>",', 'err', 120);
+    await termLine('    replace: "const items = columns.flatMap(c => c.items);\\n    items.map(item =>",', 'ok', 120);
+    await termLine('  })', '', 80);
+    await termLine('> Patch applied. HMR propagated in 12ms.', 'info', 400);
+    await termLine('✓ Self-heal successful. Runtime stable.', 'ok', 300);
+
+    $statPatches.textContent = '1';
+    setStep(1, 'completed', 'Healed ✓');
+    await wait(500);
+
+    /* ========== STEP 3: VISION SENTRY ========== */
+    setStep(2, 'active', 'Scanning...');
+
+    await termLine('', '', 50);
+    await termLine('━━━ STAGE 3: VISION SENTRY ━━━', 'system', 300);
+    await termLine('> Running Playwright DOM snapshots...', '', 400);
+    await termLine('> Capturing viewport at 1280×720', 'dim', 350);
+    await termLine('> Vision LLM pass: Analyzing bounding boxes...', 'info', 500);
+    await termLine('  [BBOX] .header   → {x:0, y:0, w:1280, h:64}', 'dim', 120);
+    await termLine('  [BBOX] .board    → {x:0, y:64, w:1280, h:656}', 'dim', 120);
+    await termLine('  [BBOX] .card-1   → {x:12, y:80, w:300, h:120}', 'dim', 120);
+    await termLine('  [FLEX] No overflow violations detected ✓', 'ok', 200);
+    await termLine('  [CSS]  No z-index collisions detected ✓', 'ok', 200);
+    await termLine('> Vision LLM pass: No CSS overlaps detected.', 'ok', 350);
+    await termLine('✓ Visual QA passed. All layouts verified.', 'ok', 300);
+
+    setStep(2, 'completed', 'Passed');
+    await wait(500);
+
+    /* ========== STEP 4: CONVERGENCE ========== */
+    setStep(3, 'active', 'Converging...');
+
+    await termLine('', '', 50);
+    await termLine('━━━ STAGE 4: CONVERGENCE ━━━', 'system', 300);
+    await termLine('> Aggregating all agent outputs...', 'info', 400);
+    await termLine('> Running test suite: vitest run', '', 350);
+    await termLine('  Tests: 32 passed, 0 failed ✓', 'ok', 500);
+    await termLine('> Computing unified Git diff...', '', 350);
+    await termLine('  1 file changed, 2 insertions(+), 1 deletion(-)', 'dim', 250);
+    await termLine('> 0 Errors. System Converged. Preparing Visual PR.', 'ok', 500);
+    await termLine('', '', 100);
+    await termLine('╔══════════════════════════════════════════╗', 'ok', 40);
+    await termLine('║   ✓ CONVERGENCE 100% — ALL CLEAR        ║', 'ok', 40);
+    await termLine('╚══════════════════════════════════════════╝', 'ok', 300);
+
+    setStep(3, 'completed', '100%');
+    await wait(800);
+
+    // Open the Visual PR Modal
+    showModal();
+  });
+
+})();
+</script>
+</body>
+</html>
